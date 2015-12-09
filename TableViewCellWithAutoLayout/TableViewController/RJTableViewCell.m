@@ -113,6 +113,11 @@
     // Set the preferredMaxLayoutWidth of the mutli-line bodyLabel based on the evaluated width of the label's frame,
     // as this will allow the text to wrap correctly, and as a result allow the label to take on the correct height.
     self.bodyLabel.preferredMaxLayoutWidth = CGRectGetWidth(self.bodyLabel.frame);
+    if (self.model[@"isExpand"] && [self.model[@"isExpand"] boolValue]) {
+        self.bodyLabel.numberOfLines = 0;
+    } else {
+        self.bodyLabel.numberOfLines = 3;
+    }
 }
 
 - (void)updateFonts

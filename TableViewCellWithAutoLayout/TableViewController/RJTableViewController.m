@@ -45,6 +45,8 @@ static NSString *CellIdentifier = @"CellIdentifier";
 // See: https://github.com/caoimghgin/TableViewCellWithAutoLayout/issues/6
 @property (assign, nonatomic) BOOL isInsertingRow;
 
+@property (nonatomic, strong) NSMutableDictionary *rowHeightCache;
+
 @end
 
 @implementation RJTableViewController
@@ -56,6 +58,7 @@ static NSString *CellIdentifier = @"CellIdentifier";
         self.model = [[RJModel alloc] init];
         [self.model populateDataSource];
         self.offscreenCells = [NSMutableDictionary dictionary];
+        self.rowHeightCache = [NSMutableDictionary dictionary];
     }
     return self;
 }
@@ -63,7 +66,7 @@ static NSString *CellIdentifier = @"CellIdentifier";
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    
+        
     self.title = @"Auto Layout Table View";
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:self action:@selector(clear:)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addRow:)];
@@ -74,7 +77,7 @@ static NSString *CellIdentifier = @"CellIdentifier";
     // it will only be called as cells are about to scroll onscreen. This is a major performance optimization.
     self.tableView.estimatedRowHeight = UITableViewAutomaticDimension;
     
-    self.tableView.allowsSelection = NO;
+    self.tableView.allowsSelection = YES;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -147,8 +150,10 @@ static NSString *CellIdentifier = @"CellIdentifier";
     // Configure the cell for this indexPath
     [cell updateFonts];
     NSDictionary *dataSourceItem = [self.model.dataSource objectAtIndex:indexPath.row];
+    
     cell.titleLabel.text =  [dataSourceItem valueForKey:@"title"];
     cell.bodyLabel.text = [dataSourceItem valueForKey:@"body"];
+    cell.model = dataSourceItem;
     
     // Make sure the constraints have been added to this cell, since it may have just been created from scratch
     [cell setNeedsUpdateConstraints];
@@ -173,12 +178,19 @@ static NSString *CellIdentifier = @"CellIdentifier";
         [self.offscreenCells setObject:cell forKey:reuseIdentifier];
     }
     
+    NSDictionary *dataSourceItem = [self.model.dataSource objectAtIndex:indexPath.row];
+    NSString *title = [dataSourceItem valueForKey:@"title"];
+    if (title && self.rowHeightCache[title]) {
+        NSNumber *heightNumber = self.rowHeightCache[title];
+        return heightNumber.doubleValue;
+    }
+    
     // Configure the cell for this indexPath
     [cell updateFonts];
-    NSDictionary *dataSourceItem = [self.model.dataSource objectAtIndex:indexPath.row];
+    
     cell.titleLabel.text =  [dataSourceItem valueForKey:@"title"];
     cell.bodyLabel.text = [dataSourceItem valueForKey:@"body"];
-    
+    cell.model = dataSourceItem;
     // Make sure the constraints have been added to this cell, since it may have just been created from scratch
     [cell setNeedsUpdateConstraints];
     [cell updateConstraintsIfNeeded];
@@ -206,6 +218,10 @@ static NSString *CellIdentifier = @"CellIdentifier";
     // of the cell's contentView and the bottom of the table view cell.
     height += 1;
     
+    if (title) {
+        self.rowHeightCache[title] = @(height);
+    }
+    
     return height;
 }
 
@@ -232,5 +248,18 @@ static NSString *CellIdentifier = @"CellIdentifier";
     return UITableViewAutomaticDimension;
 }
 */
+
+#pragma mark - UITableViewDelegate
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSDictionary *dataSourceItem = [self.model.dataSource objectAtIndex:indexPath.row];
+    NSMutableDictionary *temp = [dataSourceItem mutableCopy];
+    temp[@"isExpand"] = temp[@"isExpand"] ? @(![temp[@"isExpand"] boolValue]) : @YES;
+    self.model.dataSource[indexPath.row] = temp;
+    [self.rowHeightCache setValue:nil forKey:dataSourceItem[@"title"]];
+    [tableView beginUpdates];
+    [tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+    [tableView endUpdates];
+}
 
 @end

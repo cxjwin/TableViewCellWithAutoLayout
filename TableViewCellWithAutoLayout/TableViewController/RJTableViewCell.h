@@ -31,6 +31,8 @@
 @property (strong, nonatomic) IBOutlet UILabel *titleLabel;
 @property (strong, nonatomic) IBOutlet UILabel *bodyLabel;
 
+@property (copy, nonatomic) NSDictionary *model;
+
 - (void)updateFonts;
 
 @end
